@@ -3,5 +3,7 @@ export default {
     name: "Space Quiz",
     taskDescription: "Which planet is known as the Red Planet?",
     correctAnswer: "Mars",
-    choices: ["Earth", "Venus", "Mars", "Jupiter"]
+    choices: ["Earth", "Venus", "Mars", "Jupiter"],
+    difficulty: "medium",
+    timeLimit: 20
 };

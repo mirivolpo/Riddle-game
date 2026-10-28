@@ -3,8 +3,8 @@ import readline from "readline-sync";
 
 class MultipleChoiceRiddle extends Riddle {
 
-    constructor(id, name, taskDescription, correctAnswer, choices) {
-        super(id, name, taskDescription, correctAnswer);
+    constructor(id, name, taskDescription, correctAnswer, choices, difficulty, timeLimit) {
+        super(id, name, taskDescription, correctAnswer, difficulty, timeLimit);
         this.choices = choices;
     }
 

@@ -4,13 +4,21 @@ import Player from "./classes/Player.js";
 import allRiddles from "./riddles/index.js";
 import MultipleChoiceRiddle from "./classes/MultipleChoiceRiddle.js";
 
-// Decorator for measuring the time taken to solve a riddle
-function withTiming(func, player) {
+function withTiming(func, player, timeLimit) {
     return function () {
         const start = Date.now();
         func();
         const end = Date.now();
-        player.recordTime(start, end);
+
+        const elapsed = end - start;
+        let penalty = 0;
+
+        if (elapsed > timeLimit * 1000) {
+            console.log("Too slow! 5 seconds penalty applied.");
+            penalty = 5000;
+        }
+
+        player.recordTime(start, end + penalty);
     };
 }
 
@@ -19,14 +27,36 @@ console.log("Welcome to the Riddle Game!");
 const name = readline.question("What is your name? ");
 const player = new Player(name);
 
-const riddles = allRiddles.map(riddle => {
+let level;
+let filteredRiddles = [];
+
+while (filteredRiddles.length === 0) {
+    level = readline.question("Choose difficulty: easy / medium / hard: ");
+
+    if (!["easy", "medium", "hard"].includes(level)) {
+        console.log("Invalid difficulty. Try again.");
+        continue;
+    }
+
+    filteredRiddles = allRiddles.filter(
+        riddle => riddle.difficulty === level
+    );
+
+    if (filteredRiddles.length === 0) {
+        console.log("No riddles available for this difficulty. Choose another.");
+    }
+}
+
+const riddles = filteredRiddles.map(riddle => {
     if (riddle.choices) {
         return new MultipleChoiceRiddle(
             riddle.id,
             riddle.name,
             riddle.taskDescription,
             riddle.correctAnswer,
-            riddle.choices
+            riddle.choices,
+            riddle.difficulty,
+            riddle.timeLimit
         );
     }
 
@@ -34,7 +64,9 @@ const riddles = allRiddles.map(riddle => {
         riddle.id,
         riddle.name,
         riddle.taskDescription,
-        riddle.correctAnswer
+        riddle.correctAnswer,
+        riddle.difficulty,
+        riddle.timeLimit
     );
 });
 for (const riddle of riddles) {
