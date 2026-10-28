@@ -2,6 +2,7 @@ import readline from "readline-sync";
 import Riddle from "./classes/Riddle.js";
 import Player from "./classes/Player.js";
 import allRiddles from "./riddles/index.js";
+import MultipleChoiceRiddle from "./classes/MultipleChoiceRiddle.js";
 
 // Decorator for measuring the time taken to solve a riddle
 function withTiming(func, player) {
@@ -19,6 +20,16 @@ const name = readline.question("What is your name? ");
 const player = new Player(name);
 
 const riddles = allRiddles.map(riddle => {
+    if (riddle.choices) {
+        return new MultipleChoiceRiddle(
+            riddle.id,
+            riddle.name,
+            riddle.taskDescription,
+            riddle.correctAnswer,
+            riddle.choices
+        );
+    }
+
     return new Riddle(
         riddle.id,
         riddle.name,
@@ -26,7 +37,6 @@ const riddles = allRiddles.map(riddle => {
         riddle.correctAnswer
     );
 });
-
 for (const riddle of riddles) {
     const timedAsk = withTiming(() => riddle.ask(), player);
     timedAsk();
