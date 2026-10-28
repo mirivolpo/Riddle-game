@@ -27,6 +27,20 @@ function withTiming(func, player, timeLimit) {
     };
 }
 
+function shuffleRiddles(riddles) {
+    const shuffled = [...riddles];
+
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+
+        const temp = shuffled[i];
+        shuffled[i] = shuffled[j];
+        shuffled[j] = temp;
+    }
+
+    return shuffled;
+}
+
 console.log("Welcome to the Riddle Game!");
 
 const name = readline.question("What is your name? ");
@@ -76,10 +90,16 @@ const riddles = filteredRiddles.map(riddle => {
         riddle.hint
     );
 });
-for (const riddle of riddles) {
-    const timedAsk = withTiming(() => riddle.ask(), player);
+
+const shuffledRiddles = shuffleRiddles(riddles);
+
+for (const riddle of shuffledRiddles) {
+    const timedAsk = withTiming(
+        () => riddle.ask(),
+        player,
+        riddle.timeLimit
+    );
     timedAsk();
 }
-
 console.log(`Great job, ${player.name}!`);
 player.showStats();
