@@ -7,7 +7,7 @@ import MultipleChoiceRiddle from "./classes/MultipleChoiceRiddle.js";
 function withTiming(func, player, timeLimit) {
     return function () {
         const start = Date.now();
-        func();
+        const hintUsed = func();
         const end = Date.now();
 
         const elapsed = end - start;
@@ -15,7 +15,12 @@ function withTiming(func, player, timeLimit) {
 
         if (elapsed > timeLimit * 1000) {
             console.log("Too slow! 5 seconds penalty applied.");
-            penalty = 5000;
+            penalty += 5000;
+        }
+
+        if (hintUsed) {
+            console.log("Hint used! 10 seconds penalty applied.");
+            penalty += 10000;
         }
 
         player.recordTime(start, end + penalty);
@@ -56,7 +61,8 @@ const riddles = filteredRiddles.map(riddle => {
             riddle.correctAnswer,
             riddle.choices,
             riddle.difficulty,
-            riddle.timeLimit
+            riddle.timeLimit,
+            riddle.hint
         );
     }
 
@@ -66,7 +72,8 @@ const riddles = filteredRiddles.map(riddle => {
         riddle.taskDescription,
         riddle.correctAnswer,
         riddle.difficulty,
-        riddle.timeLimit
+        riddle.timeLimit,
+        riddle.hint
     );
 });
 for (const riddle of riddles) {
