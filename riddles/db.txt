@@ -1,0 +1,39 @@
+
+[
+    {
+        "id": 1,
+        "name": "Easy Math",
+        "taskDescription": "What is 12 + 8?",
+        "correctAnswer": "20",
+        "difficulty": "easy",
+        "timeLimit": 15,
+        "hint": "Try adding 10 first, then 2."
+    },
+    {
+        "id": 2,
+        "name": "Mystery",
+        "taskDescription": "I speak without a mouth and hear without ears. What am I?",
+        "correctAnswer": "echo",
+        "difficulty": "hard",
+        "timeLimit": 25,
+        "hint": "Think about sound and reflection."
+    },
+    {
+        "id": 3,
+        "name": "Think About It",
+        "taskDescription": "What has hands but cannot clap?",
+        "correctAnswer": "clock",
+        "difficulty": "hard",
+        "timeLimit": 25,
+        "hint": "Consider a timepiece."
+    },
+    {
+        "id": 4,
+        "name": "Space Quiz",
+        "taskDescription": "Which planet is known as the Red Planet?",
+        "correctAnswer": "Mars",
+        "choices": ["Earth", "Venus", "Mars", "Jupiter"],
+        "difficulty": "medium",
+        "timeLimit": 20
+    }
+]

@@ -1,9 +1,11 @@
+
 import readline from "readline-sync";
+import { loadRiddles } from "./riddles/riddleDB.js";
 import Riddle from "./classes/Riddle.js";
 import Player from "./classes/Player.js";
-import allRiddles from "./riddles/index.js";
 import MultipleChoiceRiddle from "./classes/MultipleChoiceRiddle.js";
 
+// Measure riddle solving time and apply penalties
 function withTiming(func, player, timeLimit) {
     return function () {
         const start = Date.now();
@@ -27,46 +29,34 @@ function withTiming(func, player, timeLimit) {
     };
 }
 
-function shuffleRiddles(riddles) {
-    const shuffled = [...riddles];
+// Ask the player to choose a valid difficulty
+function chooseDifficulty(allRiddles) {
+    let filteredRiddles = [];
 
-    for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
+    while (filteredRiddles.length === 0) {
+        const level = readline.question(
+            "Choose difficulty: easy / medium / hard: "
+        );
 
-        const temp = shuffled[i];
-        shuffled[i] = shuffled[j];
-        shuffled[j] = temp;
+        if (!["easy", "medium", "hard"].includes(level)) {
+            console.log("Invalid difficulty. Try again.");
+            continue;
+        }
+
+        filteredRiddles = allRiddles.filter(
+            riddle => riddle.difficulty === level
+        );
+
+        if (filteredRiddles.length === 0) {
+            console.log("No riddles available for this difficulty. Choose another.");
+        }
     }
 
-    return shuffled;
+    return filteredRiddles;
 }
 
-console.log("Welcome to the Riddle Game!");
-
-const name = readline.question("What is your name? ");
-const player = new Player(name);
-
-let level;
-let filteredRiddles = [];
-
-while (filteredRiddles.length === 0) {
-    level = readline.question("Choose difficulty: easy / medium / hard: ");
-
-    if (!["easy", "medium", "hard"].includes(level)) {
-        console.log("Invalid difficulty. Try again.");
-        continue;
-    }
-
-    filteredRiddles = allRiddles.filter(
-        riddle => riddle.difficulty === level
-    );
-
-    if (filteredRiddles.length === 0) {
-        console.log("No riddles available for this difficulty. Choose another.");
-    }
-}
-
-const riddles = filteredRiddles.map(riddle => {
+// Create the appropriate riddle instance
+function createRiddle(riddle) {
     if (riddle.choices) {
         return new MultipleChoiceRiddle(
             riddle.id,
@@ -89,17 +79,46 @@ const riddles = filteredRiddles.map(riddle => {
         riddle.timeLimit,
         riddle.hint
     );
-});
-
-const shuffledRiddles = shuffleRiddles(riddles);
-
-for (const riddle of shuffledRiddles) {
-    const timedAsk = withTiming(
-        () => riddle.ask(),
-        player,
-        riddle.timeLimit
-    );
-    timedAsk();
 }
-console.log(`Great job, ${player.name}!`);
-player.showStats();
+
+// Shuffle riddles using the Fisher-Yates algorithm
+function shuffleRiddles(riddles) {
+    const shuffled = [...riddles];
+
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+
+        const temp = shuffled[i];
+        shuffled[i] = shuffled[j];
+        shuffled[j] = temp;
+    }
+
+    return shuffled;
+}
+
+// Main game flow
+function main() {
+    console.log("Welcome to the Riddle Game!");
+
+    const name = readline.question("What is your name? ");
+    const player = new Player(name);
+
+    const allRiddles = loadRiddles();
+    const filteredRiddles = chooseDifficulty(allRiddles);
+    const riddles = filteredRiddles.map(riddle => createRiddle(riddle));
+    const shuffledRiddles = shuffleRiddles(riddles);
+
+    for (const riddle of shuffledRiddles) {
+        const timedAsk = withTiming(
+            () => riddle.ask(),
+            player,
+            riddle.timeLimit
+        );
+        timedAsk();
+    }
+
+    console.log(`Great job, ${player.name}!`);
+    player.showStats();
+}
+
+main();
