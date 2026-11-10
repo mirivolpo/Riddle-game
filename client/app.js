@@ -1,9 +1,9 @@
 
 import readline from "readline-sync";
-import { loadRiddles, saveRiddles } from "./riddles/riddleDB.js";
+import { loadRiddles, saveRiddles } from "../server/db/riddleDB.js";
 import Riddle from "./classes/Riddle.js";
 import Player from "./classes/Player.js";
-import { loadPlayers, savePlayers } from "./players/playerDB.js";
+import { loadPlayers, savePlayers } from "../server/db/playerDB.js";
 import MultipleChoiceRiddle from "./classes/MultipleChoiceRiddle.js";
 
 // Measure riddle solving time and apply penalties
