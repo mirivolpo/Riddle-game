@@ -16,6 +16,7 @@ class Player {
         console.log(`${this.name}'s stats:`);
         console.log(`Total time: ${totalTime.toFixed(2)} seconds`);
         console.log(`Average time: ${avg.toFixed(2)} seconds`);
+        return totalTime;
     }
 }
 export default Player;
