@@ -1,14 +1,13 @@
-
 import fs from "node:fs";
 
-const DB_PATH = "./riddles/db.txt";
+const DB_PATH = new URL("./riddles.txt", import.meta.url);
 
-export function loadRiddles() {
-    const data = fs.readFileSync(DB_PATH, "utf8");
+export async function loadRiddles() {
+    const data = await fs.promises.readFile(DB_PATH, "utf8");
     return JSON.parse(data);
 }
 
-export function saveRiddles(riddles) {
+export async function saveRiddles(riddles) {
     const data = JSON.stringify(riddles, null, 2);
-    fs.writeFileSync(DB_PATH, data, "utf8");
+    await fs.promises.writeFile(DB_PATH, data, "utf8");
 }

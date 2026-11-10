@@ -82,15 +82,10 @@ function createRiddleInstance(riddle) {
     );
 }
 
-function createNewRiddle() {
+async function createNewRiddle() {
     const name = readline.question("Enter riddle name: ");
     const taskDescription = readline.question("Enter description: ");
     const correctAnswer = readline.question("Enter correct answer: ");
-    const riddles = loadRiddles();
-    const newId = riddles.reduce(
-        (maxId, riddle) => Math.max(maxId, riddle.id),
-        0
-    ) + 1;
 
     let difficulty = readline.question(
         "Enter difficulty (easy / medium / hard): "
@@ -152,7 +147,6 @@ function createNewRiddle() {
     }
 
     const riddleData = {
-        id: newId,
         name,
         taskDescription,
         correctAnswer,
@@ -168,37 +162,57 @@ function createNewRiddle() {
         riddleData.choices = choices;
     }
 
-    const newRiddle = createRiddleInstance(riddleData);
 
-    riddles.push(newRiddle);
-    saveRiddles(riddles);
+    try {
+        const response = await fetch("http://localhost:3000/api/riddles", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(riddleData)
+        });
 
-    console.log("Riddle created successfully!");
-}
+        const data = await response.json();
 
-function findOrCreatePlayer(name) {
-    const players = loadPlayers();
+        if (!response.ok) {
+            console.log(`Failed to create riddle: ${data.message}`);
+            return;
+        }
 
-    let player = players.find(player => player.name === name);
+        console.log(`Riddle created successfully! ID: ${data.id}`);
 
-    if (!player) {
-        const newId = players.reduce(
-            (maxId, player) => Math.max(maxId, player.id),
-            0
-        ) + 1;
-
-        player = {
-            id: newId,
-            name: name,
-            lowestTime: null
-        };
-
-        players.push(player);
-        savePlayers(players);
+    } catch (error) {
+        console.error("Error connecting to server:", error.message);
     }
 
-    return player;
 }
+
+
+async function findOrCreatePlayer(name) {
+    try {
+        const response = await fetch("http://localhost:3000/api/players", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Connection": "close"
+            },
+            body: JSON.stringify({ name })
+        });
+
+        const player = await response.json();
+
+        if (!response.ok) {
+            throw new Error(player.message || "Failed to find or create player");
+        }
+
+        return player;
+
+    } catch (error) {
+        console.error("Error finding or creating player:", error.message);
+        return null;
+    }
+}
+
 
 // Shuffle riddles using the Fisher-Yates algorithm
 function shuffleRiddles(riddles) {
@@ -216,13 +230,17 @@ function shuffleRiddles(riddles) {
 }
 
 
-function playGame() {
+async function playGame() {
     console.log("Welcome to the Riddle Game!");
 
     const name = readline.question("What is your name? ");
     const player = new Player(name);
 
-    const playerData = findOrCreatePlayer(name);
+    const playerData = await findOrCreatePlayer(name);
+    if (!playerData) {
+        console.log("Unable to start game. Failed to load player.");
+        return;
+    }
 
     if (playerData.lowestTime !== null) {
         console.log(`Hi ${name}! Your previous lowest time was ${playerData.lowestTime} seconds.`);
@@ -230,7 +248,26 @@ function playGame() {
         console.log(`Welcome, ${name}! This is your first game.`);
     }
 
-    const allRiddles = loadRiddles();
+    let allRiddles;
+
+    try {
+        const response = await fetch("http://localhost:3000/api/riddles", {
+            headers: {
+                "Connection": "close"
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error("Failed to load riddles");
+        }
+
+        allRiddles = await response.json();
+
+    } catch (error) {
+        console.error("Error loading riddles:", error.message);
+        return;
+    }
+
     const filteredRiddles = chooseDifficulty(allRiddles);
     const riddles = filteredRiddles.map(riddle => createRiddleInstance(riddle));
     const shuffledRiddles = shuffleRiddles(riddles);
@@ -246,193 +283,296 @@ function playGame() {
 
     console.log(`Great job, ${player.name}!`);
     const totalTime = player.showStats();
-    updatePlayerRecord(playerData.id, totalTime);
+    await updatePlayerRecord(playerData.id, totalTime);
 }
 
-function readAllRiddles() {
-    const riddles = loadRiddles();
+async function readAllRiddles() {
 
-    riddles.forEach(riddle => {
-        console.log(`ID: ${riddle.id}`);
-        console.log(`Name: ${riddle.name}`);
-        console.log(`Description: ${riddle.taskDescription}`);
-        console.log(`Correct Answer: ${riddle.correctAnswer}`);
-        console.log(`Difficulty: ${riddle.difficulty}`);
-        console.log(`Time Limit: ${riddle.timeLimit} seconds`);
-        if (riddle.hint) {
-            console.log(`Hint: ${riddle.hint}`);
+    try {
+        const response = await fetch("http://localhost:3000/api/riddles");
+
+        if (!response.ok) {
+            throw new Error("Failed to load riddles");
         }
 
-        if (riddle.choices) {
-            console.log(`Choices: ${riddle.choices.join(", ")}`);
-        }
-        console.log("------------------------");
-    });
-}
+        const riddles = await response.json();
 
-
-
-function updateRiddle() {
-    const riddles = loadRiddles();
-
-    const id = Number(readline.question("Enter riddle ID to update: "));
-    const riddle = riddles.find(riddle => riddle.id === id);
-
-    if (!riddle) {
-        console.log("Riddle not found.");
-        return;
-    }
-
-    console.log(`Updating riddle: ${riddle.name}`);
-    console.log("Press Enter to keep the current value.");
-
-    // Update name
-    const newName = readline.question(
-        `Current name: ${riddle.name}\nEnter new name (press Enter to keep current): `
-    ).trim();
-
-    if (newName) {
-        riddle.name = newName;
-    }
-
-    // Update description
-    const newDescription = readline.question(
-        `Current description: ${riddle.taskDescription}\nEnter new description (press Enter to keep current): `
-    ).trim();
-
-    if (newDescription) {
-        riddle.taskDescription = newDescription;
-    }
-
-    // Update difficulty
-    let newDifficulty = readline.question(
-        `Current difficulty: ${riddle.difficulty}\nEnter new difficulty (easy / medium / hard, or Enter to keep): `
-    ).trim().toLowerCase();
-
-    while (newDifficulty &&
-        !["easy", "medium", "hard"].includes(newDifficulty)) {
-        console.log("Invalid difficulty.");
-        newDifficulty = readline.question(
-            "Enter easy / medium / hard (or Enter to keep): "
-        ).trim().toLowerCase();
-    }
-
-    if (newDifficulty) {
-        riddle.difficulty = newDifficulty;
-    }
-
-    // Update time limit
-    let newTimeLimit = readline.question(
-        `Current time limit: ${riddle.timeLimit} seconds\nEnter new time limit (or Enter to keep): `
-    ).trim();
-
-    while (newTimeLimit &&
-        (!Number.isInteger(Number(newTimeLimit)) || Number(newTimeLimit) <= 0)) {
-        console.log("Enter a positive integer.");
-        newTimeLimit = readline.question(
-            "Enter time limit (or Enter to keep): "
-        ).trim();
-    }
-
-    if (newTimeLimit) {
-        riddle.timeLimit = Number(newTimeLimit);
-    }
-
-    // Update hint
-    const newHint = readline.question(
-        `Current hint: ${riddle.hint || "none"}\nEnter new hint (or Enter to keep): `
-    ).trim();
-
-    if (newHint) {
-        riddle.hint = newHint;
-    }
-
-    // Update choices for multiple-choice riddles
-    if (Array.isArray(riddle.choices)) {
-        let newChoices = readline.question(
-            `Current choices: ${riddle.choices.join(", ")}\nEnter new choices separated by commas (or Enter to keep): `
-        ).trim();
-
-        while (newChoices) {
-            const choices = newChoices.split(",").map(choice => choice.trim());
-
-            if (choices.length >= 2 && choices.every(choice => choice !== "")) {
-                riddle.choices = choices;
-                break;
+        riddles.forEach(riddle => {
+            console.log(`ID: ${riddle.id}`);
+            console.log(`Name: ${riddle.name}`);
+            console.log(`Description: ${riddle.taskDescription}`);
+            console.log(`Correct Answer: ${riddle.correctAnswer}`);
+            console.log(`Difficulty: ${riddle.difficulty}`);
+            console.log(`Time Limit: ${riddle.timeLimit} seconds`);
+            if (riddle.hint) {
+                console.log(`Hint: ${riddle.hint}`);
             }
 
-            console.log("Enter at least two non-empty choices.");
-            newChoices = readline.question(
-                "Enter new choices separated by commas (or Enter to keep current): "
-            ).trim();
-        }
+            if (riddle.choices) {
+                console.log(`Choices: ${riddle.choices.join(", ")}`);
+            }
+            console.log("------------------------");
+        });
+
+    } catch (error) {
+        console.error("Error loading riddles:", error.message);
     }
 
-    // Update correct answer
-    let newAnswer = readline.question(
-        `Current correct answer: ${riddle.correctAnswer}\nEnter new correct answer (or Enter to keep): `
-    ).trim();
-
-    if (newAnswer) {
-        riddle.correctAnswer = newAnswer;
-    }
-
-    // Validate correct answer for multiple-choice riddles
-    if (Array.isArray(riddle.choices)) {
-        while (!riddle.choices.includes(riddle.correctAnswer)) {
-            console.log("The correct answer must be one of the choices.");
-            riddle.correctAnswer = readline.question(
-                `Current choices: ${riddle.choices.join(", ")}\nEnter the correct answer: `
-            ).trim();
-        }
-    }
-
-    // Save updated riddles
-    saveRiddles(riddles);
-    console.log("Riddle updated successfully!");
 }
 
-function deleteRiddle() {
-    const riddles = loadRiddles();
 
-    const id = Number(
-        readline.question("Enter riddle ID to delete: ")
-    );
 
-    const updatedRiddles = riddles.filter(
-        riddle => riddle.id !== id
-    );
+async function updateRiddle() {
+    try {
+        const response = await fetch("http://localhost:3000/api/riddles");
 
-    if (updatedRiddles.length === riddles.length) {
-        console.log("Riddle not found.");
+        if (!response.ok) {
+            throw new Error("Failed to load riddles");
+        }
+
+        const riddles = await response.json();
+
+        const id = Number(readline.question("Enter riddle ID to update: "));
+        const riddle = riddles.find(riddle => riddle.id === id);
+
+        if (!riddle) {
+            console.log("Riddle not found.");
+            return;
+        }
+
+        console.log(`Updating riddle: ${riddle.name}`);
+        console.log("Press Enter to keep the current value.");
+
+        // Update name
+        const newName = readline.question(
+            `Current name: ${riddle.name}\nEnter new name (press Enter to keep current): `
+        ).trim();
+
+        if (newName) {
+            riddle.name = newName;
+        }
+
+        // Update description
+        const newDescription = readline.question(
+            `Current description: ${riddle.taskDescription}\nEnter new description (press Enter to keep current): `
+        ).trim();
+
+        if (newDescription) {
+            riddle.taskDescription = newDescription;
+        }
+
+        // Update difficulty
+        let newDifficulty = readline.question(
+            `Current difficulty: ${riddle.difficulty}\nEnter new difficulty (easy / medium / hard, or Enter to keep): `
+        ).trim().toLowerCase();
+
+        while (newDifficulty &&
+            !["easy", "medium", "hard"].includes(newDifficulty)) {
+            console.log("Invalid difficulty.");
+            newDifficulty = readline.question(
+                "Enter easy / medium / hard (or Enter to keep): "
+            ).trim().toLowerCase();
+        }
+
+        if (newDifficulty) {
+            riddle.difficulty = newDifficulty;
+        }
+
+        // Update time limit
+        let newTimeLimit = readline.question(
+            `Current time limit: ${riddle.timeLimit} seconds\nEnter new time limit (or Enter to keep): `
+        ).trim();
+
+        while (newTimeLimit &&
+            (!Number.isInteger(Number(newTimeLimit)) || Number(newTimeLimit) <= 0)) {
+            console.log("Enter a positive integer.");
+            newTimeLimit = readline.question(
+                "Enter time limit (or Enter to keep): "
+            ).trim();
+        }
+
+        if (newTimeLimit) {
+            riddle.timeLimit = Number(newTimeLimit);
+        }
+
+        // Update hint
+        const newHint = readline.question(
+            `Current hint: ${riddle.hint || "none"}\nEnter new hint (or Enter to keep): `
+        ).trim();
+
+        if (newHint) {
+            riddle.hint = newHint;
+        }
+
+        // Update choices for multiple-choice riddles
+        if (Array.isArray(riddle.choices)) {
+            let newChoices = readline.question(
+                `Current choices: ${riddle.choices.join(", ")}\nEnter new choices separated by commas (or Enter to keep): `
+            ).trim();
+
+            while (newChoices) {
+                const choices = newChoices.split(",").map(choice => choice.trim());
+
+                if (choices.length >= 2 && choices.every(choice => choice !== "")) {
+                    riddle.choices = choices;
+                    break;
+                }
+
+                console.log("Enter at least two non-empty choices.");
+                newChoices = readline.question(
+                    "Enter new choices separated by commas (or Enter to keep current): "
+                ).trim();
+            }
+        }
+
+        // Update correct answer
+        let newAnswer = readline.question(
+            `Current correct answer: ${riddle.correctAnswer}\nEnter new correct answer (or Enter to keep): `
+        ).trim();
+
+        if (newAnswer) {
+            riddle.correctAnswer = newAnswer;
+        }
+
+        // Validate correct answer for multiple-choice riddles
+        if (Array.isArray(riddle.choices)) {
+            while (!riddle.choices.includes(riddle.correctAnswer)) {
+                console.log("The correct answer must be one of the choices.");
+                riddle.correctAnswer = readline.question(
+                    `Current choices: ${riddle.choices.join(", ")}\nEnter the correct answer: `
+                ).trim();
+            }
+        }
+
+        // Save updated riddle
+
+
+        const updateResponse = await fetch(`http://localhost:3000/api/riddles/${id}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(riddle)
+        });
+
+        const data = await updateResponse.json();
+
+        if (!updateResponse.ok) {
+            console.log(`Failed to update riddle: ${data.message}`);
+            return;
+        }
+
+        console.log("Riddle updated successfully!");
+    } catch (error) {
+        console.error("Error updating riddle:", error.message);
+    }
+
+}
+
+
+async function deleteRiddle() {
+    try {
+        const response = await fetch("http://localhost:3000/api/riddles");
+
+        if (!response.ok) {
+            throw new Error("Failed to load riddles");
+        }
+
+        const riddles = await response.json();
+
+        const id = Number(readline.question("Enter riddle ID to delete: "));
+
+        const riddle = riddles.find(r => r.id === id);
+
+        if (!riddle) {
+            console.log("Riddle not found.");
+            return;
+        }
+
+        console.log(`Riddle to delete: ${riddle.name}`);
+
+        const confirmation = readline.question(
+            "Are you sure you want to delete this riddle? (y/n): "
+        ).trim().toLowerCase();
+
+        if (confirmation !== "y") {
+            console.log("Deletion cancelled.");
+            return;
+        }
+
+        const deleteResponse = await fetch(
+            `http://localhost:3000/api/riddles/${id}`,
+            {
+                method: "DELETE"
+            }
+        );
+
+        const data = await deleteResponse.json();
+
+        if (!deleteResponse.ok) {
+            console.log(`Failed to delete riddle: ${data.message}`);
+            return;
+        }
+
+        console.log(data.message);
+
+    } catch (error) {
+        console.error("Error deleting riddle:", error.message);
+    }
+}
+
+
+
+async function updatePlayerRecord(playerId, totalTime) {
+    try {
+        const response = await fetch(
+            `http://localhost:3000/api/players/${playerId}`,
+            {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ totalTime })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            console.log(`Failed to update player record: ${data.message}`);
+            return;
+        }
+
+        console.log(`Your best recorded time is ${data.lowestTime} seconds.`);
+
+    } catch (error) {
+        console.error("Error updating player record:", error);
+        console.error("Cause:", error.cause);
+    }
+}
+
+async function showLeaderboard() {
+
+    let players;
+
+    try {
+        const response = await fetch("http://localhost:3000/api/players", {
+            headers: {
+                "Connection": "close"
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error("Failed to load players");
+        }
+
+        players = await response.json();
+
+    } catch (error) {
+        console.error("Error loading leaderboard:", error.message);
         return;
     }
 
-    saveRiddles(updatedRiddles);
-    console.log("Riddle deleted successfully!");
-}
-
-function updatePlayerRecord(playerId, totalTime) {
-    const players = loadPlayers();
-
-    const player = players.find(player => player.id === playerId);
-
-    if (!player) {
-        console.log("Player not found.");
-        return;
-    }
-
-    if (player.lowestTime === null || totalTime < player.lowestTime) {
-        player.lowestTime = totalTime;
-        savePlayers(players);
-        console.log("New record! Time updated.");
-    } else {
-        console.log("You did not beat your previous record.");
-    }
-}
-
-function showLeaderboard() {
-    const players = loadPlayers();
 
     const rankedPlayers = players.filter(
         player => player.lowestTime !== null
@@ -453,7 +593,7 @@ function showLeaderboard() {
 }
 
 
-function main() {
+async function main() {
     console.log("\nWhat do you want to do?");
     console.log("1. Play the game");
     console.log("2. Create a new riddle");
@@ -466,23 +606,23 @@ function main() {
 
     switch (choice) {
         case "1":
-            playGame();
+            await playGame();
             break;
 
         case "2":
-            createNewRiddle();
+            await createNewRiddle();
             break;
         case "3":
-            readAllRiddles();
+            await readAllRiddles();
             break;
         case "4":
-            updateRiddle();
+            await updateRiddle();
             break;
         case "5":
-            deleteRiddle();
+            await deleteRiddle();
             break;
         case "6":
-            showLeaderboard();
+            await showLeaderboard();
             break;
 
         default:
