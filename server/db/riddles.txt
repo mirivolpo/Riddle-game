@@ -54,5 +54,13 @@
       "Canberra",
       "Perth"
     ]
+  },
+  {
+    "id": 6,
+    "name": "Math Challenge",
+    "taskDescription": "What is 6 + 7?",
+    "correctAnswer": "13",
+    "difficulty": "easy",
+    "timeLimit": 20
   }
 ]
